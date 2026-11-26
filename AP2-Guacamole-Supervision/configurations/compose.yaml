@@ -1,0 +1,38 @@
+# Reconstitution documentée ; fichier .env local requis, jamais publié.
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: guacamole_db
+      POSTGRES_USER: guacamole_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Mot de passe absent}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U guacamole_user -d guacamole_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  guacd:
+    image: guacamole/guacd:1.6.0
+    restart: unless-stopped
+  guacamole:
+    image: guacamole/guacamole:1.6.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      guacd:
+        condition: service_started
+    environment:
+      GUACD_HOSTNAME: guacd
+      POSTGRESQL_HOSTNAME: db
+      POSTGRESQL_DATABASE: guacamole_db
+      POSTGRESQL_USERNAME: guacamole_user
+      POSTGRESQL_PASSWORD: ${DB_PASSWORD:?Mot de passe absent}
+    ports:
+      - "10.2.61.121:8080:8080"
+volumes:
+  postgres_data:

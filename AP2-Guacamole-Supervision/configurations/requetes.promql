@@ -1,0 +1,20 @@
+# Exécuter chaque expression séparément dans Grafana Explorer.
+
+# Succès de collecte des cibles
+up
+
+# Disponibilité HTTP de Guacamole (1 = disponible)
+probe_success{job="guacamole_web"}
+
+# Durée de la sonde en secondes
+probe_duration_seconds{job="guacamole_web"}
+
+# Occupation CPU de l'AD en pourcentage
+100 - (avg by (instance) (rate(windows_cpu_time_seconds_total{instance="10.2.61.100:9182",mode="idle"}[5m])) * 100)
+
+# État courant de quatre services Windows (1 = démarré)
+windows_service_state{job="windows",instance="10.2.61.100:9182",service=~"(?i)(NTDS|DNS|DHCPServer|Netlogon)",state="running"}
+
+# Conditions à définir dans l'éditeur d'alerte Grafana :
+# Guacamole : résultat de probe_success IS BELOW 1, pendant 2m.
+# AD : chaque série windows_service_state IS BELOW 1, pendant 2m.

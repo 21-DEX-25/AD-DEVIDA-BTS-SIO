@@ -1,0 +1,12 @@
+# Exemple à intégrer à la section [smtp] existante de /etc/grafana/grafana.ini.
+# Remplacer le secret localement. Ne jamais publier le fichier complété.
+[smtp]
+enabled = true
+host = smtp.gmail.com:587
+user = devida.supervision@gmail.com
+password = REMPLACER_PAR_LE_MOT_DE_PASSE_APPLICATION
+skip_verify = false
+from_address = devida.supervision@gmail.com
+from_name = Supervision DEVIDA
+ehlo_identity = srv-supervision-devida.devida.local
+startTLS_policy = MandatoryStartTLS

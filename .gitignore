@@ -1,0 +1,20 @@
+# Secrets et sauvegardes d'exploitation
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.pfx
+*.sql
+*.db
+*.sqlite*
+*.tar.gz
+*.bak
+grafana.ini
+# Originaux non sélectionnés et fichiers locaux
+originaux/
+planches/
+Screenshots.zip
+__pycache__/
+desktop.ini
+Thumbs.db

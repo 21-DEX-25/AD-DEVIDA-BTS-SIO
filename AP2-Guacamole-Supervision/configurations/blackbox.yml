@@ -1,0 +1,6 @@
+# Extrait minimal reconstitué : intégrer au fichier existant si nécessaire.
+modules:
+  http_2xx:
+    prober: http
+    http:
+      preferred_ip_protocol: ip4

@@ -1,5 +1,9 @@
 # Socle commun — Infrastructure DEVIDA
 
+> **En langage simple.** Ce chapitre présente les fondations communes : les ordinateurs virtuels, leurs adresses et les services qui leur permettent de communiquer. Proxmox héberge les machines ; le réseau transporte leurs échanges ; Active Directory centralise les comptes. Ces éléments rendent possibles la téléphonie et l’accès distant décrits ensuite.
+>
+> Première lecture : les explications et les captures suffisent. Pour les mots nouveaux, ouvrez le [lexique](../LEXIQUE.md) ou le [parcours de découverte](../GUIDE-DEBUTANT.md).
+
 [Retour au sommaire](../README.md)
 
 ## 1. Contexte et périmètre
@@ -48,19 +52,28 @@ Le domaine est `DEVIDA.local`. Les DNS du laboratoire sont 10.2.61.100 et 10.2.6
 
 *Figure 064 — Zone DNS DEVIDA.local et enregistrements du laboratoire. Source : `Screenshots/Capture d'écran 2026-10-02 122913.png`.*
 
+> **Comment lire cette capture :** Les noms à gauche sont associés à des adresses. Le DNS joue le rôle d’un annuaire : un nom connu peut être traduit en adresse de machine.
+
 ![Figure 378 — Réservations DHCP de Guacamole, TrueNAS et du serveur de supervision.](../captures/AP2/figure-378.png)
 
 *Figure 378 — Réservations DHCP de Guacamole, TrueNAS et du serveur de supervision. Source : `Screenshots/Capture d'écran 2026-11-19 145910.png`.*
 
+> **Comment lire cette capture :** Une réservation associe une machine à une adresse stable. Cela évite que les outils de surveillance cherchent le serveur à une ancienne adresse après un redémarrage.
+
 La réservation associe l’adresse MAC de la VM à l’IPv4 souhaitée. Une adresse stable est nécessaire pour les connexions Guacamole, les cibles Prometheus et les règles de pare-feu.
 
 Un poste Debian a également été joint au domaine avec `realmd`/SSSD. La preuve disponible montre le domaine et les paramètres de connexion autorisés :
+
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
 
 ```bash
 # Contrôle observé sur le poste Debian du domaine
 /usr/sbin/realm list
 ```
 
+
+</details>
 ![Figure 071 — Client Debian déjà membre du domaine DEVIDA.local ; résultat de realm list.](../captures/infrastructure/figure-071.png)
 
 *Figure 071 — Client Debian déjà membre du domaine DEVIDA.local ; résultat de realm list. Source : `Screenshots/Capture d'écran 2026-10-02 140153.png`.*
@@ -97,6 +110,8 @@ Le pool `DATA-DEVIDA` a ensuite été créé, avec un dataset `PARTAGE` prévu p
 
 *Figure 106 — Pool DATA-DEVIDA créé ; un seul disque de données, sans redondance à ce niveau. Source : `Screenshots/Capture d'écran 2026-10-08 161604.png`.*
 
+> **Comment lire cette capture :** Le pool est l’espace de stockage créé avec les disques. Ici, un seul disque de données est utilisé : cette étape ne démontre pas une protection contre la panne de ce disque.
+
 ![Figure 108 — Création du dataset PARTAGE avec un préréglage SMB.](../captures/infrastructure/figure-108.png)
 
 *Figure 108 — Création du dataset PARTAGE avec un préréglage SMB. Source : `Screenshots/Capture d'écran 2026-10-08 162121.png`.*
@@ -113,11 +128,16 @@ Les DNS et la passerelle ont été adaptés au domaine ; l’intégration à l�
 
 *Figure 133 — Service d’annuaire TrueNAS affiché HEALTHY après la configuration AD. Source : `Screenshots/Capture d'écran 2026-10-08 170216.png`.*
 
+> **Comment lire cette capture :** Le mot « HEALTHY » indique que l’intégration à l’annuaire est déclarée saine à cet instant. Il ne remplace pas un essai d’accès aux fichiers avec les droits d’un utilisateur.
+
 Ces preuves démontrent la création du pool/dataset et l’état du service d’annuaire à cet instant. Elles ne démontrent pas un test complet des droits SMB, de restauration ou de continuité de service.
 
 ## 6. Contrôles réseau réutilisables
 
 Les commandes suivantes constituent une fiche de vérification ; les exécuter uniquement sur la machine concernée.
+
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
 
 ```bash
 # Debian : adresse, route et DNS
@@ -125,6 +145,11 @@ ip -br address
 ip route
 cat /etc/resolv.conf
 ```
+
+
+</details>
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
 
 ```powershell
 # Windows : paramètres réseau et identité
@@ -134,4 +159,6 @@ whoami
 Test-NetConnection 10.2.61.121 -Port 8080
 ```
 
+
+</details>
 Un ping réussi ne garantit pas qu’un service web répond. Il faut vérifier le port, puis le protocole applicatif. Cette distinction a été utilisée pendant l’incident Guacamole et le diagnostic d’accès FreePBX.

@@ -1,5 +1,9 @@
 # AP1 — Déploiement d’un standard téléphonique FreePBX
 
+> **En langage simple.** Le but est de faire communiquer deux personnes avec des numéros internes, comme dans une entreprise. FreePBX sert à régler le standard et Asterisk établit les appels. Vous allez suivre la création du serveur, des numéros 201 et 202, puis les essais. Le projet porte sur des appels internes, sans abonnement à un opérateur téléphonique.
+>
+> Première lecture : les explications et les captures suffisent. Pour les mots nouveaux, ouvrez le [lexique](../LEXIQUE.md) ou le [parcours de découverte](../GUIDE-DEBUTANT.md).
+
 [Sommaire général](../README.md) · [Infrastructure commune](../00-Infrastructure/README.md) · [Commandes de diagnostic](configurations/diagnostic.sh)
 
 **Période documentée : octobre 2026.** Les captures décisives datent des 16, 22, 23 et 29 octobre. Les vérifications ultérieures ne sont pas confondues avec l’installation initiale.
@@ -69,6 +73,8 @@ Dans **Interfaces → Assignments → VLANs**, un VLAN portant l’identifiant `
 
 *Figure 144 — Création du VLAN 510 VOIX_DEVIDA sur l’interface parent vtnet2 de pfSense. Source : `Screenshots/Capture d'écran 2026-10-16 123111.png`.*
 
+> **Comment lire cette capture :** Le numéro 510 identifie le réseau réservé à la voix. L’avertissement de mot de passe par défaut visible sur cet écran décrit un état intermédiaire : un tel réglage doit être remplacé avant exploitation. La preuve de ce changement n’est pas fournie.
+
 ![Figure 148 — Adresse de passerelle 10.2.62.1/24 de l’interface voix.](../captures/AP1/figure-148.png)
 
 *Figure 148 — Adresse de passerelle 10.2.62.1/24 de l’interface voix. Source : `Screenshots/Capture d'écran 2026-10-16 123630.png`.*
@@ -98,11 +104,15 @@ Dans Proxmox, **Créer VM**, renseigner le nom, choisir l’ISO Debian 12, défi
 
 *Figure 183 — Récapitulatif de création de SRV-TEL-DEVIDA : 2 cœurs, 4096 Mio, disque 40 Go et VLAN 510. Source : `Screenshots/Capture d'écran 2026-10-22 104422.png`.*
 
+> **Comment lire cette capture :** Les lignes cores, memory et disque indiquent les ressources attribuées à cet ordinateur virtuel. Ce sont des ressources du serveur physique partagées avec les autres machines.
+
 L’installateur Debian a d’abord échoué à obtenir automatiquement une adresse. Le réseau a donc été configuré manuellement dans la VM.
 
 ![Figure 186 — Échec de l’autoconfiguration DHCP pendant l’installation du serveur téléphonique.](../captures/AP1/figure-186.png)
 
 *Figure 186 — Échec de l’autoconfiguration DHCP pendant l’installation du serveur téléphonique. Source : `Screenshots/Capture d'écran 2026-10-22 105024.png`.*
+
+> **Comment lire cette capture :** Le serveur n’a pas reçu automatiquement ses paramètres réseau. Cet échec explique la saisie manuelle de l’adresse, de la passerelle et des serveurs DNS dans les étapes suivantes.
 
 Les paramètres sont `10.2.62.10`, masque `255.255.255.0`, passerelle `10.2.62.1`, puis les DNS internes.
 
@@ -132,12 +142,17 @@ Le partitionnement assisté utilise le disque de cette VM. Les changements sont 
 
 Après redémarrage, les contrôles observés sont :
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```bash
 ip -br address
 ip route
 sudo apt update
 ```
 
+
+</details>
 `ip -br address` confirme l’adresse sur `ens18`. `ip route` confirme la route par défaut vers `10.2.62.1`. Le succès d’APT valide l’accès aux dépôts à cet instant.
 
 ![Figure 216 — Contrôle après installation : 10.2.62.10/24, passerelle 10.2.62.1 et mise à jour APT.](../captures/AP1/figure-216.png)
@@ -150,6 +165,9 @@ sudo apt update
 
 L’installation observée se termine par le script FreePBX 17 et indique Asterisk 22.11.0. La ligne exacte de téléchargement initial n’est pas conservée dans une capture retenue. Les commandes ci-dessous sont donc **reconstituées pour reproduction sur une nouvelle VM Debian 12**, depuis le [dépôt officiel FreePBX](https://github.com/FreePBX/sng_freepbx_debian_install). Elles ne doivent pas être relancées aveuglément sur le serveur déjà installé.
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```bash
 # À exécuter seulement lors d'une nouvelle installation
 sudo apt update
@@ -161,6 +179,8 @@ less /tmp/sng_freepbx_debian_install.sh
 sudo bash /tmp/sng_freepbx_debian_install.sh
 ```
 
+
+</details>
 La branche `master` peut évoluer : elle ne garantit pas de réinstaller exactement les versions d’octobre 2026. Pour une reproduction stricte, il faudrait conserver le script historique et son empreinte. Les journaux de l’installateur se trouvent dans `/var/log/pbx/freepbx17-install.log`.
 
 ### 5.2. Incident de téléchargement de modules
@@ -173,11 +193,16 @@ Le premier passage échoue pendant l’installation de modules. Des essais `curl
 
 La séquence de correction effectivement visible est :
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```bash
 sudo fwconsole setting PROXY_ENABLED 0
 sudo fwconsole -vvv ma downloadinstall bulkhandler
 ```
 
+
+</details>
 La première commande désactive l’utilisation du proxy par FreePBX. La seconde télécharge et installe le module `bulkhandler` en affichant des détails. Le journal confirme l’installation de la version 17.0.7.1 de ce module. Le proxy et les délais réseau ont été explorés ; les captures ne permettent pas d’attribuer tous les échecs à une cause unique.
 
 ![Figure 224 — Désactivation du proxy FreePBX et installation réussie du module bulkhandler.](../captures/AP1/figure-224.png)
@@ -207,6 +232,8 @@ Les options de langue sont définies, puis l’assistant de pare-feu est parcour
 ![Figure 248 — Tableau de bord FreePBX après l’installation.](../captures/AP1/figure-248.png)
 
 *Figure 248 — Tableau de bord FreePBX après l’installation. Source : `Screenshots/Capture d'écran 2026-10-23 091928.png`.*
+
+> **Comment lire cette capture :** L’ouverture du tableau de bord prouve que l’interface d’administration répond. Il reste ensuite à créer les numéros et à tester un appel.
 
 ## 6. Configuration du standard
 
@@ -246,6 +273,8 @@ Dans le menu **Extensions**, sélectionner **Add Extension → Add New SIP [chan
 ![Figure 271 — Extensions PJSIP 201 et 202 présentes dans FreePBX.](../captures/AP1/figure-271.png)
 
 *Figure 271 — Extensions PJSIP 201 et 202 présentes dans FreePBX. Source : `Screenshots/Capture d'écran 2026-10-23 100209.png`.*
+
+> **Comment lire cette capture :** Les deux lignes correspondent aux numéros internes 201 et 202. Leur présence confirme la création des comptes, pas encore la réussite d’une conversation.
 
 Les captures de formulaires montrant les secrets SIP ne sont pas publiées. La liste finale prouve la création des deux extensions sans exposer ces valeurs.
 
@@ -292,6 +321,8 @@ Depuis le poste 201, composer 202, décrocher sur l’autre client et vérifier 
 
 *Figure 288 — Appel MicroSIP de 201 vers 202 affiché Connected. Source : `Screenshots/Capture d'écran 2026-10-23 120732.png`.*
 
+> **Comment lire cette capture :** « Connected » signifie que l’appel a été établi. La capture ne permet pas d’entendre le son : la vérification audio doit être distinguée de cette preuve visuelle.
+
 **Résultat établi :** l’établissement de l’appel est visible. Le fonctionnement audio Windows/Android a été confirmé par l’utilisateur pendant les échanges. La capture seule ne démontre pas la qualité audio ni un test longue durée.
 
 ## 8. Sauvegarde
@@ -305,6 +336,8 @@ Dans **Admin → Backup & Restore**, créer une tâche de sauvegarde, nommer la 
 ![Figure 295 — Archive de sauvegarde de 67,63 MB présente dans le cache local ; framework 17.0.33.2.](../captures/AP1/figure-295.png)
 
 *Figure 295 — Archive de sauvegarde de 67,63 MB présente dans le cache local ; framework 17.0.33.2. Source : `Screenshots/Capture d'écran 2026-10-23 121711.png`.*
+
+> **Comment lire cette capture :** Le fichier et sa taille montrent qu’une archive a été produite. Pour prouver qu’elle permet de récupérer le service, il faudrait aussi réaliser un essai de restauration.
 
 La sauvegarde affichée date du 23 octobre 2026 et pèse 67,63 MB. Le framework indiqué est 17.0.33.2. Une présence dans le cache local n’est pas une sauvegarde externalisée : il reste utile de conserver une copie hors de la VM. Aucun test de restauration n’est démontré dans l’archive.
 
@@ -326,11 +359,16 @@ Les commandes exactes d’enrôlement et les paramètres complets du routeur Tai
 
 Depuis le shell Proxmox, les contrôles observés sont :
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```bash
 ip route get 10.2.62.10
 curl -I --connect-timeout 5 --max-time 10 http://10.2.62.10/admin/
 ```
 
+
+</details>
 La route est présente, mais la requête HTTP expire. Cela oriente le diagnostic vers le service ou un filtrage, plutôt que vers une absence de route.
 
 ![Figure 301 — Diagnostic depuis Proxmox : route vers FreePBX présente, mais requête HTTP en échec.](../captures/AP1/figure-301.png)
@@ -348,6 +386,8 @@ Après correction, la requête renvoie `302 Found` vers `config.php`, ce qui con
 ![Figure 306 — Requête HTTP vers FreePBX réussie après correction : réponse 302 vers config.php.](../captures/AP1/figure-306.png)
 
 *Figure 306 — Requête HTTP vers FreePBX réussie après correction : réponse 302 vers config.php. Source : `Screenshots/Capture d'écran 2026-10-29 154039.png`.*
+
+> **Comment lire cette capture :** Le code HTTP 302 est une redirection vers une autre page. Dans cet essai, il montre que le serveur web répond de nouveau, même si la page finale demande encore une connexion.
 
 Cette réponse prouve l’accès HTTP depuis Proxmox. Elle ne prouve pas à elle seule un appel audio depuis chaque client Tailscale. Le routage, le filtrage et l’audio doivent être validés séparément.
 

@@ -1,5 +1,9 @@
 # 1 — Déployer Apache Guacamole
 
+> **En langage simple.** Guacamole permet d’ouvrir le bureau d’un ordinateur Windows ou la ligne de commande d’un serveur Linux dans un navigateur. Il fait l’intermédiaire entre l’utilisateur et la machine distante. Dans ce chapitre, nous installons cet intermédiaire, définissons les accès et vérifions la machine sur laquelle la connexion aboutit.
+>
+> Première lecture : les explications et les captures suffisent. Pour les mots nouveaux, ouvrez le [lexique](../LEXIQUE.md) ou le [parcours de découverte](../GUIDE-DEBUTANT.md).
+
 [Retour au rapport AP2](README.md) · [Suite : supervision](02-SUPERVISION.md)
 
 ## 1.1 Objectif et fonctionnement
@@ -32,6 +36,9 @@ Le nom de machine est `srv-guac-devida`, avec le domaine `DEVIDA.local`. Un comp
 
 Après installation, la réservation DHCP fixe l’adresse à **10.2.61.121/24**. La passerelle est **10.2.61.1** et les DNS du laboratoire sont **10.2.61.100** et **10.2.61.101**. Le contrôle se fait avec :
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```bash
 hostname
 ip -br a
@@ -40,19 +47,29 @@ cat /etc/resolv.conf
 systemctl is-active ssh
 ```
 
+
+</details>
 ![Figure 332 — Contrôles réseau de Guacamole : adresse, route, DNS et accès SSH.](../captures/AP2/figure-332.png)
 
 *Figure 332 — Contrôles réseau de Guacamole : adresse, route, DNS et accès SSH. Source : `Screenshots/Capture d'écran 2026-11-13 145211.png`.*
 
 Depuis PowerShell, l’accès d’administration est ouvert avec :
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```powershell
 ssh adminlocal@10.2.61.121
 ```
 
+
+</details>
 ## 1.3 Installer Docker et Compose
 
 Les captures démontrent le fonctionnement de Docker avec `hello-world` et la présence de Docker Compose. Le bloc suivant est une **reconstitution de la procédure officielle pour Debian**, et non la transcription intégrale du terminal d’origine. Il ajoute le dépôt Docker et installe les paquets nécessaires. [Source Docker](https://docs.docker.com/engine/install/debian/).
+
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
 
 ```bash
 sudo apt update
@@ -74,13 +91,20 @@ sudo docker run hello-world
 sudo docker compose version
 ```
 
+
+</details>
 ![Figure 336 — Test Docker hello-world réussi et version de Docker Compose affichée.](../captures/AP2/figure-336.png)
 
 *Figure 336 — Test Docker hello-world réussi et version de Docker Compose affichée. Source : `Screenshots/Capture d'écran 2026-11-13 155045.png`.*
 
+> **Comment lire cette capture :** « Hello from Docker! » est le résultat d’un petit programme de contrôle. Il valide le fonctionnement de Docker avant le déploiement de Guacamole.
+
 ## 1.4 Préparer PostgreSQL et les secrets
 
 Le dossier de travail est `~/guacamole`. Le schéma PostgreSQL est généré depuis l’image de la même version que l’application :
+
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
 
 ```bash
 mkdir -p ~/guacamole/init
@@ -90,11 +114,16 @@ sudo docker run --rm guacamole/guacamole:1.6.0 \
 wc -l init/001-guacamole.sql
 ```
 
+
+</details>
 ![Figure 337 — Téléchargement des images et génération du schéma PostgreSQL Guacamole.](../captures/AP2/figure-337.png)
 
 *Figure 337 — Téléchargement des images et génération du schéma PostgreSQL Guacamole. Source : `Screenshots/Capture d'écran 2026-11-13 155348.png`.*
 
 Un fichier `.env` local contient le mot de passe de la base. Il n’est pas ajouté au dépôt. La commande observée utilise `umask 077` pour limiter sa lecture et ne remplace pas un secret déjà présent :
+
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
 
 ```bash
 (
@@ -105,6 +134,8 @@ Un fichier `.env` local contient le mot de passe de la base. Il n’est pas ajou
 )
 ```
 
+
+</details>
 ![Figure 338 — Génération locale d’un secret de base de données dans .env ; valeur non affichée.](../captures/AP2/figure-338.png)
 
 *Figure 338 — Génération locale d’un secret de base de données dans .env ; valeur non affichée. Source : `Screenshots/Capture d'écran 2026-11-13 155733.png`.*
@@ -117,6 +148,9 @@ Le fichier [compose.yaml](configurations/compose.yaml) restitue les paramètres 
 
 Enregistrer ce fichier dans `~/guacamole/compose.yaml`, puis contrôler sa syntaxe sans afficher le secret :
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```bash
 cd ~/guacamole
 sudo docker compose config --quiet
@@ -125,11 +159,15 @@ sudo docker compose ps -a
 sudo docker compose logs --tail=50 guacamole
 ```
 
+
+</details>
 Le test de santé de PostgreSQL permet d’attendre que la base réponde avant le lancement de l’application. Seul le port web est publié sur l’hôte ; la base et `guacd` communiquent sur le réseau interne Compose.
 
 ![Figure 340 — Démarrage des trois conteneurs et publication de 10.2.61.121:8080.](../captures/AP2/figure-340.png)
 
 *Figure 340 — Démarrage des trois conteneurs et publication de 10.2.61.121:8080. Source : `Screenshots/Capture d'écran 2026-11-13 160103.png`.*
+
+> **Comment lire cette capture :** Chaque ligne représente un composant. La colonne des ports montre comment le navigateur pourra joindre le service web ; les autres composants participent au fonctionnement interne.
 
 Dans le navigateur, ouvrir **http://10.2.61.121:8080/guacamole/**. Le compte initial est remplacé ou sécurisé lors de la configuration ; aucun mot de passe de connexion n’est conservé dans le rapport.
 
@@ -163,20 +201,29 @@ La figure suivante montre une étape de saisie du formulaire ; tous ses champs n
 
 Une première tentative affiche une erreur de permissions dans le navigateur. L’examen des journaux `guacd` précise **Credentials expired** : le serveur RDP refuse les identifiants expirés. Le diagnostic porte donc sur le compte Windows et son mot de passe, pas seulement sur les autorisations du portail.
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```bash
 cd ~/guacamole
 sudo docker compose logs --since=5m --tail=80 guacd guacamole
 ```
 
+
+</details>
 ![Figure 359 — Journal guacd indiquant Credentials expired lors de l’échec RDP.](../captures/AP2/figure-359.png)
 
 *Figure 359 — Journal guacd indiquant Credentials expired lors de l’échec RDP. Source : `Screenshots/Capture d'écran 2026-11-13 164706.png`.*
+
+> **Comment lire cette capture :** Le message « Credentials expired » indique un problème d’identifiants expirés lors de la connexion distante. Il explique pourquoi un message général dans le navigateur ne suffit pas à trouver la cause.
 
 Après régularisation du compte, les captures montrent le bureau distant. `ipconfig` confirme l’adresse du poste et `whoami` l’identité de domaine. La méthode exacte de changement de mot de passe n’étant pas conservée dans les preuves, aucune commande de réinitialisation n’est inventée ici.
 
 ![Figure 360 — Session Windows affichée dans Guacamole ; ipconfig identifie la cible 10.2.61.126.](../captures/AP2/figure-360.png)
 
 *Figure 360 — Session Windows affichée dans Guacamole ; ipconfig identifie la cible 10.2.61.126. Source : `Screenshots/Capture d'écran 2026-11-13 170327.png`.*
+
+> **Comment lire cette capture :** Le bureau Windows est affiché à l’intérieur du navigateur. La commande ipconfig donne l’adresse du poste atteint : elle permet de vérifier que la connexion arrive sur la bonne machine.
 
 ![Figure 361 — whoami confirme une session ouverte avec le compte de domaine devida\nbernard.](../captures/AP2/figure-361.png)
 
@@ -196,6 +243,8 @@ Dans le terminal ouvert depuis Guacamole, les commandes `whoami` et `hostname` i
 
 *Figure 365 — Session SSH Guacamole fonctionnelle : whoami et hostname. Source : `Screenshots/Capture d'écran 2026-11-13 171059.png`.*
 
+> **Comment lire cette capture :** whoami affiche le compte utilisé ; hostname affiche le nom de la machine. Les deux réponses confirment l’identité de la session et du serveur distant.
+
 ## 1.8 Incident : interface web inaccessible après redémarrage
 
 Le 26 novembre, le portail n’est plus accessible. Docker fonctionne, mais le conteneur web est à l’état **Exited (143)** tandis que PostgreSQL et `guacd` sont actifs. Cette observation ne permet pas de déterminer qui ou quoi a arrêté le conteneur.
@@ -204,7 +253,12 @@ Le 26 novembre, le portail n’est plus accessible. Docker fonctionne, mais le c
 
 *Figure 400 — Incident Guacamole : Docker actif, base et guacd disponibles, conteneur web arrêté. Source : `Screenshots/Capture d'écran 2026-11-26 100239.png`.*
 
+> **Comment lire cette capture :** Docker fonctionne, mais le composant web est marqué « Exited », donc arrêté. Un service composé de plusieurs éléments peut être indisponible même si une partie reste active.
+
 Le démarrage du seul service web remet le processus en marche, mais ne suffit pas à rendre le port accessible. Les contrôles suivants montrent l’absence de port publié et un refus de connexion :
+
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
 
 ```bash
 sudo docker compose start guacamole
@@ -212,6 +266,8 @@ sudo docker compose port guacamole 8080
 curl -I --connect-timeout 5 --max-time 10 http://10.2.61.121:8080/guacamole/
 ```
 
+
+</details>
 ![Figure 402 — Absence de publication effective du port 8080 et refus de connexion HTTP.](../captures/AP2/figure-402.png)
 
 *Figure 402 — Absence de publication effective du port 8080 et refus de connexion HTTP. Source : `Screenshots/Capture d'écran 2026-11-26 100451.png`.*
@@ -224,6 +280,9 @@ La configuration déclarative contient pourtant le port hôte `8080` sur `10.2.6
 
 La remise en conformité consiste à recréer seulement le service web à partir du fichier Compose, en conservant la base :
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```bash
 cd ~/guacamole
 sudo docker compose up -d --no-deps --force-recreate guacamole
@@ -231,6 +290,8 @@ sudo docker compose ps -a
 sudo docker compose port guacamole 8080
 ```
 
+
+</details>
 La réapparition de l’écran de connexion constitue la preuve de retour du service web.
 
 ![Figure 404 — Page Guacamole de nouveau accessible après la correction.](../captures/AP2/figure-404.png)

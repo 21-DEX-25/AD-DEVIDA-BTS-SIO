@@ -1,5 +1,9 @@
 # AP2 — Accès distant et supervision de DEVIDA
 
+> **En langage simple.** Ce projet répond à deux besoins : utiliser une machine à distance et savoir si les services fonctionnent. Guacamole ouvre une porte d’accès depuis un navigateur ; Prometheus collecte les mesures ; Grafana les transforme en graphiques et en alertes. Les trois chapitres ci-dessous suivent cet ordre.
+>
+> Première lecture : les explications et les captures suffisent. Pour les mots nouveaux, ouvrez le [lexique](../LEXIQUE.md) ou le [parcours de découverte](../GUIDE-DEBUTANT.md).
+
 [Accueil](../README.md) · [Architecture](../00-Infrastructure/README.md)
 
 ## Besoin et périmètre

@@ -1,5 +1,9 @@
 # 3 — Configurer les alertes par e-mail et valider le résultat
 
+> **En langage simple.** Un graphique est utile quand quelqu’un le regarde. Une alerte permet de prévenir automatiquement une personne. Ici, Grafana vérifie une condition, attend qu’elle dure suffisamment longtemps, puis envoie un e-mail. Nous testons cette chaîne en modifiant temporairement le seuil de déclenchement, sans provoquer de panne du domaine.
+>
+> Première lecture : les explications et les captures suffisent. Pour les mots nouveaux, ouvrez le [lexique](../LEXIQUE.md) ou le [parcours de découverte](../GUIDE-DEBUTANT.md).
+
 [Rapport AP2](README.md) · [Précédent : supervision](02-SUPERVISION.md)
 
 ## 3.1 Objectif
@@ -22,11 +26,19 @@ Deux captures de l’archive contenaient ce secret en clair : elles sont exclues
 
 Sur **SRV-SUPERVISION-DEVIDA**, ouvrir `/etc/grafana/grafana.ini` avec les droits administrateur et rechercher la section `[smtp]`. Modifier les lignes existantes plutôt que de créer une seconde section. Les lignes actives ne doivent pas commencer par `;`.
 
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
+
 ```bash
 sudo nano /etc/grafana/grafana.ini
 ```
 
+
+</details>
 Configuration reconstituée, disponible aussi dans [grafana-smtp.ini.example](configurations/grafana-smtp.ini.example) :
+
+<details>
+<summary>Voir la configuration</summary>
 
 ```ini
 [smtp]
@@ -41,9 +53,14 @@ ehlo_identity = srv-supervision-devida.devida.local
 startTLS_policy = MandatoryStartTLS
 ```
 
+
+</details>
 Le port 587 est utilisé avec STARTTLS obligatoire. `skip_verify = false` conserve la vérification du certificat. Le champ `password` reçoit le mot de passe d’application, sans les espaces de présentation de Google. [Référence SMTP Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#smtp).
 
 Après enregistrement dans Nano, les permissions sont limitées à `root` et au groupe `grafana`, puis le service est redémarré :
+
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
 
 ```bash
 sudo chown root:grafana /etc/grafana/grafana.ini
@@ -52,6 +69,8 @@ sudo systemctl restart grafana-server
 systemctl is-active grafana-server
 ```
 
+
+</details>
 ![Figure 447 — Permissions du fichier grafana.ini et redémarrage du service Grafana, état active.](../captures/AP2/figure-447.png)
 
 *Figure 447 — Permissions du fichier grafana.ini et redémarrage du service Grafana, état active. Source : `Screenshots/Capture d'écran 2026-11-26 121535.png`.*
@@ -71,6 +90,8 @@ Cliquer sur **Test**, envoyer une notification puis vérifier la boîte mail. Le
 ![Figure 449 — Réception du message TestAlert envoyé par le point de contact Grafana.](../captures/AP2/figure-449.png)
 
 *Figure 449 — Réception du message TestAlert envoyé par le point de contact Grafana. Source : `Screenshots/Capture d'écran 2026-11-26 121832.png`.*
+
+> **Comment lire cette capture :** Le message TestAlert prouve que le canal d’envoi arrive jusqu’à la boîte e-mail. Il ne prouve pas encore qu’une condition de panne déclencherait la règle attendue.
 
 Enregistrer le point de contact. La mention **Inutilisé** visible à cette étape signifie qu’aucune règle ne lui est encore associée, même si l’e-mail de test fonctionne.
 
@@ -119,9 +140,13 @@ Le test réalisé modifie temporairement le seuil à **IS BELOW 2** alors que la
 
 *Figure 454 — Test de la règle Guacamole : état Pending avec seuil temporaire à 2. Source : `Screenshots/Capture d'écran 2026-11-26 122731.png`.*
 
+> **Comment lire cette capture :** « Pending » signifie que la condition est vraie mais que la durée d’attente n’est pas terminée. Ici, le seuil a été volontairement modifié pour tester le mécanisme.
+
 ![Figure 455 — Mail FIRING reçu pour l’alerte Guacamole durant le test simulé.](../captures/AP2/figure-455.png)
 
 *Figure 455 — Mail FIRING reçu pour l’alerte Guacamole durant le test simulé. Source : `Screenshots/Capture d'écran 2026-11-26 123012.png`.*
+
+> **Comment lire cette capture :** « FIRING » annonce une alerte déclenchée. Dans cette preuve, le déclenchement résulte d’un seuil temporaire de test : il ne faut pas le présenter comme une panne réelle de Guacamole.
 
 ![Figure 456 — Retour de la règle Guacamole à l’état Normal après remise du seuil normal.](../captures/AP2/figure-456.png)
 
@@ -133,6 +158,9 @@ Ce test valide le circuit de notification d’une règle. Il ne prouve pas qu’
 
 Créer la règle **AD — Service essentiel arrêté**, avec une requête instantanée qui conserve une série par service :
 
+<details>
+<summary>Voir la requête de mesure</summary>
+
 ```promql
 windows_service_state{
   job="windows",
@@ -142,14 +170,21 @@ windows_service_state{
 }
 ```
 
+
+</details>
 Retenir **IS BELOW 1**, le dossier `AP2-DEVIDA`, le groupe `supervision-devida` évalué toutes les **30 secondes**, une attente de **2 minutes** et le point de contact `Email-DEVIDA`. Ne pas agréger les quatre séries en une moyenne : les labels permettent d’identifier le service concerné.
 
 Le résumé utilise les étiquettes de l’instance :
+
+<details>
+<summary>Voir les commandes ou le détail technique</summary>
 
 ```text
 Le service {{ $labels.service }} sur {{ $labels.instance }} n’est plus démarré depuis au moins 2 minutes.
 ```
 
+
+</details>
 L’écran de définition peut afficher ce modèle littéralement ; son remplacement intervient dans le contexte d’une instance d’alerte.
 
 ![Figure 464 — Règle AD — Service essentiel arrêté enregistrée, quatre instances et état Normal.](../captures/AP2/figure-464.png)
@@ -169,6 +204,8 @@ Un mail **RESOLVED**, avec **4 resolved instances**, confirme ensuite la résolu
 ![Figure 465 — Mail de résolution de quatre instances de l’alerte AD.](../captures/AP2/figure-465.png)
 
 *Figure 465 — Mail de résolution de quatre instances de l’alerte AD. Source : `Screenshots/Capture d'écran 2026-11-26 144724.png`.*
+
+> **Comment lire cette capture :** « Resolved » signifie que la condition de l’alerte n’est plus remplie. Les quatre instances sont les quatre services suivis, pas quatre serveurs différents.
 
 **Limite de preuve :** un mail de résolution ne suffit pas à vérifier le seuil définitivement enregistré. Avant la remise du rapport, rouvrir la règle et contrôler **IS BELOW 1**, ainsi que le retour des quatre instances à l’état Normal. La résolution ne doit pas être présentée comme une preuve de redémarrage de l’AD.
 

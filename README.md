@@ -1,65 +1,64 @@
-# AD-DEVIDA — Rapports techniques AP1 et AP2
+# DEVIDA — Téléphoner, travailler à distance et surveiller des serveurs
 
-**BTS SIO — option SISR · Yan Brette · Laboratoire virtualisé sur Proxmox**
+**Les projets de Yan Brette · BTS SIO, option SISR**  
+Des comptes rendus pour comprendre le projet, puis retrouver les étapes techniques.
 
-Ce dossier présente les réalisations de téléphonie IP, d’accès distant et de supervision du laboratoire DEVIDA. Les rapports expliquent les configurations, les commandes, les vérifications et les incidents à partir des captures fournies et des échanges de réalisation.
+## De quoi parle ce projet ?
 
-| Réalisation | Objectif | Rapport |
+Imaginez une petite entreprise. Ses employés ont besoin de s’appeler, d’accéder à leur poste à distance et d’être prévenus lorsqu’un outil ne fonctionne plus. J’ai construit un environnement d’essai, appelé **DEVIDA**, pour mettre en place ces services et apprendre à les administrer.
+
+Cet environnement est un **laboratoire** : plusieurs ordinateurs virtuels fonctionnent dans un même ordinateur physique. Il permet de faire des essais sans présenter les résultats comme ceux d’une entreprise réelle.
+
+## Vous découvrez l’informatique ? Commencez ici
+
+👉 **[Comprendre les deux projets, sans lire de commandes](GUIDE-DEBUTANT.md)**
+
+Ce parcours explique les besoins, le rôle des outils et ce que les résultats permettent de conclure. Aucun logiciel à installer pour le lire. Si un mot vous arrête, consultez le **[lexique en langage simple](LEXIQUE.md)**.
+
+| Projet | Le besoin, en une phrase | Ce qui a été obtenu |
 | --- | --- | --- |
-| Socle commun | Situer Proxmox, pfSense, les VLAN et les services AD/DNS/DHCP | [Architecture et infrastructure](00-Infrastructure/README.md) |
-| AP1 | Installer un standard téléphonique FreePBX et établir des appels internes | [Rapport FreePBX](AP1-FreePBX/README.md) |
-| AP2 | Centraliser les accès RDP/SSH et superviser les serveurs | [Rapport Guacamole et supervision](AP2-Guacamole-Supervision/README.md) |
-| Annexes | Retrouver les preuves et réutiliser la structure de rédaction | [Sélection des captures](SELECTION-CAPTURES.md) · [Inventaire des 99 images retenues](INVENTAIRE-CAPTURES.csv) · [Modèle de fiche](MODELE-FICHE.md) · [Sources et méthode](SOURCES.md) |
+| **AP1 — Téléphonie** | Permettre à deux personnes de s’appeler avec leur ordinateur ou leur téléphone | Un standard FreePBX, deux numéros internes et un appel connecté |
+| **AP2 — Accès distant** | Ouvrir un poste de travail depuis un navigateur | Des connexions Guacamole vers un bureau Windows et un terminal Linux |
+| **AP2 — Supervision** | Voir l’état des machines et recevoir un e-mail en cas de problème détecté | Des graphiques, des indicateurs d’état et des notifications testées |
 
-## Lire les preuves
+**AP** signifie ici *atelier de professionnalisation*. Le **BTS SIO** est une formation aux services informatiques. L’option **SISR** porte sur les infrastructures, les systèmes et les réseaux.
 
-Les captures couvrent septembre à novembre 2026. Les dates indiquées sont celles des noms de fichiers et des écrans ; elles ne constituent pas une vérification de la synchronisation horaire des machines.
+## Choisir sa lecture
 
-Les blocs de code sont distingués ainsi :
+| Pour… | Ouvrir… |
+| --- | --- |
+| Comprendre l’ensemble en quelques minutes | [Le parcours de découverte](GUIDE-DEBUTANT.md) |
+| Comprendre un terme ou un message en anglais | [Le lexique](LEXIQUE.md) |
+| Voir comment les machines sont reliées | [L’infrastructure commune](00-Infrastructure/README.md) |
+| Suivre l’installation de la téléphonie | [Le rapport détaillé AP1](AP1-FreePBX/README.md) |
+| Suivre l’accès distant, les graphiques et les alertes | [Le rapport détaillé AP2](AP2-Guacamole-Supervision/README.md) |
+| Rédiger un compte rendu avec la même méthode | [Le modèle de fiche](MODELE-FICHE.md) |
+| Retrouver une preuve ou une référence | [Les captures sélectionnées](SELECTION-CAPTURES.md) · [L’inventaire des 99 images](INVENTAIRE-CAPTURES.csv) · [Les sources](SOURCES.md) |
 
-- **Observé** : commande ou résultat visible dans une capture, ou opération confirmée pendant la réalisation.
-- **Reconstitué pour reproduction** : procédure remise au propre à partir de la configuration et de la documentation ; ce n’est pas un export intégral de l’historique du terminal.
-- **À vérifier / amélioration** : opération non démontrée comme effectuée dans le laboratoire.
+## Comment lire les rapports ?
 
-Les paramètres anciens, les écrans non encore remplis et les erreurs sont légendés comme tels. Les rapports ne prétendent pas que les exemples ont été réexécutés pour leur rédaction. Les adresses privées correspondent au laboratoire ; les secrets sont absents du dépôt.
+Chaque rapport commence par une explication du besoin et du résultat. Les sections détaillent ensuite les manipulations. Les **blocs de commandes sont dépliables** : vous pouvez les laisser fermés pour une première lecture. Ils servent aux lecteurs qui souhaitent comprendre ou reproduire la configuration sur leur propre matériel.
 
-## Vue d’ensemble
+Sous les captures, les légendes précisent ce que l’écran montre. Les encadrés **« Comment lire cette capture »** expliquent ce qu’il faut observer. Une ligne verte ou un message de réussite prouve un contrôle précis ; elle ne signifie pas que tout le système a été testé.
 
-```mermaid
-flowchart TB
-    PVE[Proxmox : hébergement des VM]
-    FW[pfSense : routage et filtrage]
-    V500[VLAN 500 : 10.2.61.0/24]
-    V510[VLAN 510 : 10.2.62.0/24]
-    AD[AD / DNS / DHCP : 10.2.61.100]
-    GUAC[Guacamole : 10.2.61.121]
-    SUP[Prometheus et Grafana : 10.2.61.123]
-    TEL[FreePBX : 10.2.62.10]
-    WIN[Poste Windows : 10.2.61.126]
-    PVE --> FW
-    FW --> V500
-    FW --> V510
-    V500 --> AD
-    V500 --> GUAC
-    V500 --> SUP
-    V500 --> WIN
-    V510 --> TEL
-    SUP -->|Mesures et sondes| AD
-    SUP -->|Mesures et HTTP| GUAC
-    GUAC -->|RDP| WIN
-```
+Les adresses comme `10.2.61.123` désignent les machines de ce laboratoire. **Ce ne sont pas des liens de démonstration accessibles sur Internet.** Les recopier chez soi ne donne pas accès au projet.
 
-## Résultats établis
+## Ce qui fonctionne et ce qui reste à vérifier
 
-L’AP1 dispose de deux extensions PJSIP et d’une capture d’appel connecté. La validation audio Windows/Android a été confirmée dans les échanges ; aucune capture ne peut, seule, prouver la qualité du son. Une sauvegarde FreePBX est visible.
+- **Téléphonie :** deux numéros internes existent et un appel est affiché comme connecté. Le fonctionnement audio a été confirmé pendant la réalisation ; une image seule ne permet pas d’entendre la conversation.
+- **Accès distant :** un bureau Windows et un terminal Linux ont été ouverts depuis Guacamole.
+- **Surveillance :** les graphiques reçoivent des données et les messages de test arrivent par e-mail. Les alertes ont été testées en modifiant temporairement leurs seuils, sans arrêter les services du domaine.
+- **Limites :** un essai de restauration des sauvegardes, des contrôles supplémentaires et certaines vérifications finales restent à documenter. Ils sont indiqués dans les rapports.
 
-L’AP2 dispose de sessions Guacamole RDP et SSH fonctionnelles, de cibles Prometheus accessibles, de graphiques Linux/Windows et de notifications d’alerte reçues. Les tests de déclenchement ont été effectués en modifiant temporairement les seuils ; aucun arrêt réel de l’AD n’est présenté comme testé.
+## D’où viennent les informations ?
 
-## Éléments à compléter avant remise au professeur
+Les comptes rendus s’appuient sur les captures du laboratoire, réalisées entre septembre et novembre 2026, et les échanges pendant sa mise en place. **99 images ont été choisies parmi 466.** Les images hors sujet et celles contenant des secrets ont été écartées de la sélection publiée.
 
-1. Renseigner l’établissement, la classe et les éventuelles fiches imposées par le professeur.
-2. Vérifier le seuil final de l’alerte AD dans l’écran d’édition : `IS BELOW 1`. Le mail de résolution confirme le changement d’état, pas à lui seul ce réglage.
-3. Si demandé, joindre l’export réel des tableaux Grafana et des configurations après retrait des secrets. Les exemples fournis ici sont des reconstitutions documentées.
-4. Ajouter une preuve de restauration FreePBX si ce test est réalisé ; à ce stade seule la création de sauvegarde est démontrée.
+Trois mentions permettent de distinguer les faits des exemples : **Observé** (visible ou confirmé), **Reconstitué pour reproduction** (procédure remise au propre) et **À vérifier** (résultat non encore démontré). Les commandes n’ont pas été réexécutées sur les serveurs pour rédiger ce dossier.
 
-Ce dossier fournit une structure de rapport technique ; il ne remplace pas les consignes d’évaluation de l’établissement.
+<details>
+<summary>Pour la remise du dossier au professeur</summary>
+
+Renseigner l’établissement et la classe selon les consignes de l’établissement. Vérifier le seuil final de l’alerte AD (`IS BELOW 1`). Joindre, si demandé, les exports réels des tableaux de bord après retrait des secrets. Ajouter une preuve de restauration FreePBX si ce test est réalisé. Ce dossier ne remplace pas une fiche d’évaluation imposée par le professeur.
+
+</details>
